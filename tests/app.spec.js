@@ -1,11 +1,32 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';  // Required for __dirname in ES modules
 import { test, chromium } from '@playwright/test';
 import data from './data.json';
 import ExcelJS from 'exceljs';
 
+// Define __dirname in ES module
+const __dirname = path.resolve();
 
-// Initialize the Excel workbook and worksheet outside of the loop
 const workbook = new ExcelJS.Workbook();
 const worksheet = workbook.addWorksheet('Test Results');
+
+// Function to dynamically create a folder for the current month
+const getMonthlyFolderPath = () => {
+    const currentDate = new Date();
+    const monthName = currentDate.toLocaleString('en-US', { month: 'long' }); // e.g., "April"
+    const year = currentDate.getFullYear(); // e.g., 2025
+    const folderName = `${monthName}_${year}`; // e.g., "April_2025"
+    const folderPath = path.join(__dirname, folderName); // Full path
+
+    // Check if folder exists, if not create it
+    if (!fs.existsSync(folderPath)) {
+        fs.mkdirSync(folderPath, { recursive: true });
+        console.log(`📁 Created folder: ${folderPath}`);
+    }
+    
+    return folderPath;
+};
 
 // Function to save results in the desired format
 const saveResults = async (rowIndex, result, testCaseIndex) => {
@@ -22,21 +43,20 @@ const saveResults = async (rowIndex, result, testCaseIndex) => {
 const finalizeExcelFile = async () => {
     try {
         const currentDate = new Date();
+        const formattedDate = `${String(currentDate.getDate()).padStart(2, '0')}${String(currentDate.getMonth() + 1).padStart(2, '0')}${currentDate.getFullYear()}`;
+        const fileName = `AI_Blog_Writer_${formattedDate}.xlsx`;
 
-        // Format date as DDMMYYYY
-        const day = String(currentDate.getDate()).padStart(2, '0');
-        const month = String(currentDate.getMonth() + 1).padStart(2, '0'); // Months are zero-indexed
-        const year = currentDate.getFullYear();
+        // Get month-wise folder path
+        const folderPath = getMonthlyFolderPath();
+        const filePath = path.join(folderPath, fileName);
 
-        const formattedDate = `${day}${month}${year}`;
-        const path = `AI_Blog_Writer_${formattedDate}.xlsx`;
-        
-        await workbook.xlsx.writeFile(path);
-        console.log(`Results written to ${path}`);
+        await workbook.xlsx.writeFile(filePath);
+        console.log(`✅ Results written to ${filePath}`);
     } catch (error) {
         console.error(`Error during finalizing Excel file: ${error}`);
     }
 };
+
 const apidatalogin = async (page) => {
     try {
         const response = await page.waitForResponse(
