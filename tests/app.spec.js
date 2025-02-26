@@ -1,6 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';  // Required for __dirname in ES modules
 import { test, chromium } from '@playwright/test';
 import data from './data.json';
 import ExcelJS from 'exceljs';
