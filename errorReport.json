@@ -1,6 +1,0 @@
-[
-  {
-    "URL": "https://react-dev.gravitywrite.com/blog-writer",
-    "Error": "locator.fill: Error: Element is not an <input>, <textarea> or [contenteditable] element\nCall log:\n  \u001b[2m- waiting for locator('//span[contains(text(),\\'Enter the sub heading\\')]')\u001b[22m\n\u001b[2m  -   locator resolved to <span class=\"-z-10 absolute w-fit left-0 inline-block min-w-1 text-gray-400\">Enter the sub heading</span>\u001b[22m\n\u001b[2m  -   fill(\"testone\")\u001b[22m\n\u001b[2m  - attempting fill action\u001b[22m\n\u001b[2m  -   waiting for element to be visible, enabled and editable\u001b[22m\n"
-  }
-]

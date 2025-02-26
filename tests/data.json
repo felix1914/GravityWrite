@@ -1,13 +1,10 @@
 {
     "data": [
         {
-            "URL": "https://app.gravitywrite.com/login",
-            "Username":"jerald@wl.team",
-            "Password":"Test@1234",
-            "Blog_Title":"Describe the notion",
-            "Newsubheading":"testone",
-            "Keyword":"TestNg",
-            "Imagecontent":"Dog in cycle"
+            "URL": "https://stagging.webspacekit.com/client/order/wordpress-hosting/67",
+            "Domain":"tesee",
+            "Password":"Test@123"
+          
         }
        
      
