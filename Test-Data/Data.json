@@ -1,0 +1,19 @@
+{
+    "Test_Data": [
+        {
+            "URL": "https://app.gravitywrite.com/login",
+            "Username": "jerald@wl.team",
+            "Password": "Test@1234",
+            "Single_Prompt_Q1": "Food Factory",
+            "Single_Prompt_Q2": "2",
+            "Multi_Prompt_Q1": "MCA, Full Stack Tester",
+    "AI_Text_Humanizer": "Chhota Bheem and his friends were having a peaceful and fun-filled day in Dholakpur, soaking in the warm sunlight and playing games. However, their joy was short-lived when a dark figure appeared in the sky. It was Kirmada, an evil magician known for causing havoc in villages. He cast a powerful spell that made the villagers feel weak and drained. The village, once full of life, became silent and sluggish as the spell took effect.\n\nBheem, being the courageous and strong leader, couldn’t let this happen. He knew he had to find a way to save the villagers and stop Kirmada. With his loyal friends, Chutki, Raju, and Jaggu, Bheem set off on a dangerous journey. They needed to find the magical herbs hidden deep within the forest, which held the power to break the spell. Along their journey, they encountered several challenges, including Kirmada’s vicious minions. But Bheem’s strength and his friends’ support kept them going.\n\nAfter an intense battle, Bheem found the herbs, and using their power, he was able to break Kirmada’s spell. The villagers regained their strength, cheered, and thanked Bheem and his friends for their bravery, restoring peace to Dholakpur once again."
+
+          }
+    ]
+} 
+
+
+
+
+  

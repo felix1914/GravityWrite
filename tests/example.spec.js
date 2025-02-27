@@ -1,41 +1,19 @@
-import { test } from '@playwright/test';
-const ExcelJS = require('exceljs');
+// @ts-check
+import { test, expect } from '@playwright/test';
 
-test('AgentLoginPage with Authentication', async ({ page }) => {
-  try {
-    const sitemapURL = 'https://uat.truhomefinance.in/sitemap.xml';
+test('has title', async ({ page }) => {
+  await page.goto('https://playwright.dev/');
 
-    // Authenticate using basic HTTP credentials
-    await page.authenticate({
-      username: 'hfl',
-      password: 'Hfl@123',
-    });
+  // Expect a title "to contain" a substring.
+  await expect(page).toHaveTitle(/Playwright/);
+});
 
-    await page.goto(sitemapURL);
+test('get started link', async ({ page }) => {
+  await page.goto('https://playwright.dev/');
 
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Sitemap');
+  // Click the get started link.
+  await page.getByRole('link', { name: 'Get started' }).click();
 
-    // Add headers to the Excel worksheet
-    worksheet.addRow(['URL', 'Response Code']);
-
-    // Evaluate an XPath expression to extract values of <loc> tags
-    const locValues = await page.$$eval('loc', (elements) =>
-      elements.map((element) => element.textContent)
-    );
-
-    for (const locValue of locValues) {
-      const response = await page.goto(locValue);
-      const responseCode = response?.status();
-      console.log(`Response Code: ${locValue}---${responseCode}`);
-      worksheet.addRow([locValue, responseCode]);
-    }
-
-    const path = 'Shriramlife05062024.xlsx';
-    await workbook.xlsx.writeFile(path);
-
-    console.log('Sitemap data has been written to the Excel file successfully.');
-  } catch (error) {
-    console.error('An error has occurred ', error);
-  }
+  // Expects page to have a heading with the name of Installation.
+  await expect(page.getByRole('heading', { name: 'Installation' })).toBeVisible();
 });
