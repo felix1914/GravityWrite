@@ -24,7 +24,9 @@ const testNames = [
     'Login Test',
     'Single Prompt Test',
     'Multi Prompt Test',
-    'AI Text Humanizer Test'
+    'AI Text Humanizer Test',
+    'AI_Chat',
+    'AI_Image_Generate'
 ];
 
 testNames.forEach((name, index) => {
@@ -84,6 +86,7 @@ const handlePageError = async (error, testCaseIndex) => {
     console.error(`Error: ${error.message}`);
     await saveResults(testCaseIndex, `❌ ${error.message}`, 'fail');
 };
+
 
 // **Main Test Suite**
 test.describe('Testsuite', () => {
@@ -148,22 +151,36 @@ test.describe('Testsuite', () => {
             await page.fill('[placeholder="Please enter your focus keyword"]', Data.Test_Data[0].Single_Prompt_Q1);
             await page.fill('//input[@name="question_243"]', Data.Test_Data[0].Single_Prompt_Q2);
             await page.click("#button-submit");
-
-            const response = await page.waitForResponse(res => res.url().includes('/api/singlePrompt/storeContent') && res.status() === 200);
+        
+            const response = await page.waitForResponse(res => 
+                res.url().includes('/api/singlePrompt/storeContent') && res.status() === 200
+            );
+        
             const responseData = await response.json();
-
-            let singlePromptResult = responseData?.data?.content || '';
-            singlePromptResult = typeof singlePromptResult === 'string' ? singlePromptResult.replace(/\*\*|-!"/g, '').trim() : '';
-
-            if (singlePromptResult.length > 0) {
-                console.log('\x1b[32m✔️ Single Prompt Test Passed!\x1b[0m');
-                await saveResults(1, `Single prompt test passed:${singlePromptResult}`, 'pass');
-            } else {
-                throw new Error("Single prompt result is empty.");
+            const fullResponse = JSON.stringify(responseData, null, 2); // Store full response
+        
+            console.log('✅ Full API Response:', fullResponse);
+        
+            let singlePromptResult = responseData?.data?.content || null;
+        
+            if (typeof singlePromptResult === 'string') {
+                singlePromptResult = singlePromptResult.replace(/\*\*|-!"/g, '').trim(); // Clean unwanted characters
             }
+        
+            if ((singlePromptResult != null) && singlePromptResult.length > 0) {
+                console.log('\x1b[32m✔️ Single Prompt Test Passed!\x1b[0m');
+                await saveResults(1, `Single prompt test passed: ${singlePromptResult}`, 'pass');
+            } else {
+               // await saveResults(1, `Single prompt test Failed 1111: ${fullResponse}`, 'fail');
+               throw new Error(`Single prompt result is empty. Full Response:\n${fullResponse}`);
+               
+            }
+        
         } catch (error) {
+            console.error('❌ Test Failed:', error.message);
             await handlePageError(error, 1);
         }
+        
     });
 
     // **Test Case 2: Multi Prompt Test**
@@ -176,85 +193,184 @@ test.describe('Testsuite', () => {
             await page.locator('(//div[@class="flex-1 mt-2"])[2]').type(Data.Test_Data[0].Multi_Prompt_Q1);
             await page.locator("//button[contains(text(),'Save and Continue')]").click();
             await page.locator("(//span[contains(text(),'Regenerate')])[1]").click();
-
+    
             const response = await page.waitForResponse(res =>
                 res.url().includes('/api/multiPrompt/storeContent') && res.status() === 200
             );
+    
             const responseData = await response.json();
-            console.log('Full API Response:', JSON.stringify(responseData, null, 2));
-
-            let multiPromptResult = responseData?.data?.content?.content || responseData?.data?.content || '';
-            multiPromptResult = typeof multiPromptResult === 'string' ? multiPromptResult.replace(/\*\*|"/g, '').trim() : '';
-
-            console.log(`Extracted Multi Prompt Result:`, multiPromptResult);
-            console.log(`Character Count:`, multiPromptResult.length);
-
-            if (multiPromptResult.length > 0) {
+            const fullResponse = JSON.stringify(responseData, null, 2); // Store full response
+    
+            console.log('✅ Full API Response:', fullResponse);
+    
+            let multiPromptResult = responseData?.data?.content?.content || responseData?.data?.content || null;
+    
+            if (typeof multiPromptResult === 'string') {
+                multiPromptResult = multiPromptResult.replace(/\*\*|"/g, '').trim(); // Clean unwanted characters
+            }
+    
+            if ((multiPromptResult != null) && (multiPromptResult.length > 0)) {
                 console.log('\x1b[32m✔️ Multi Prompt Test Passed!\x1b[0m');
                 await saveResults(2, `Multi prompt test passed with content: ${multiPromptResult}`, 'pass');
             } else {
-                throw new Error("Multi prompt result is empty.");
+                throw new Error(`Multi prompt result is empty. Full Response:\n${fullResponse}`);
             }
+    
         } catch (error) {
             console.log('\x1b[31m❌ Multi Prompt Test Failed!\x1b[0m');
             await saveResults(2, `Multi prompt test failed: ${error.message}`, 'fail');
             await handlePageError(error, 2);
         }
     });
+    
 
     test(`TC 3_AI_Text_Humanizer`, async () => {
         try {
             await page.click("//span[contains(text(),'AI Text Humanizer')]");
             await page.fill('//textarea[@placeholder="Please paste the AI-produced content that you\'d like to be revised to sound more human."]', Data.Test_Data[0].AI_Text_Humanizer);
             await page.click("//button[contains(text(),'Humanize')]");
-
+    
             // Locate error message
             let errorLocator = page.locator('//p[@class="text-xs text-red-500 mt-1"]');
-
+    
             // Check if the error message is displayed
             if (await errorLocator.isVisible()) {
                 let errorMessage = await errorLocator.textContent();
                 console.log(`Error Message Displayed: ${errorMessage}`);
-                await saveResults(3, `AI Text Humanizer Test Failed: ${errorMessage}`, 'fail');
+               // await saveResults(3, `AI Text Humanizer Test Failed: ${errorMessage}`, 'fail');
                 throw new Error(`Validation error: ${errorMessage}`);
             } else {
                 console.log("Hello World"); // Message when no error is found
                 console.log("⏳ Waiting for API response: /api/singlePrompt/storeContent");
-
-                const response = await page.waitForResponse(async (res) => {
-                    const url = res.url();
-                    if (url.includes('/api/singlePrompt/storeContent')) {
-                        console.log(`✅ API Response Received: ${url}`);
-                        return res.status() === 200;
-                    }
-                    return false;  // Keep waiting if the condition is not met
-                });
-
+    
+                const response = await page.waitForResponse(res =>
+                    res.url().includes('/api/singlePrompt/storeContent') && res.status() === 200
+                );
+    
                 const responseData = await response.json();
-                console.log('Full API Response:', JSON.stringify(responseData, null, 2));
-                let singlePromptResult = responseData?.data?.content || '';
-                singlePromptResult = typeof singlePromptResult === 'string' ? singlePromptResult.replace(/\*\*|-!"/g, '').trim() : '';
-
-                if (singlePromptResult.length > 0) {
-                    console.log('\x1b[32m✔️ Single Prompt Test Passed!\x1b[0m');
-                    await saveResults(3, `AI Text Humanizer test passed:${singlePromptResult}`, 'pass');
+                const fullResponse = JSON.stringify(responseData, null, 2); // Store full response
+    
+                console.log('✅ Full API Response:', fullResponse);
+    
+                let singlePromptResult = responseData?.data?.content || null;
+    
+                if (typeof singlePromptResult === 'string') {
+                    singlePromptResult = singlePromptResult.replace(/\*\*|-!"/g, '').trim(); // Clean unwanted characters
+                }
+    
+                if ((singlePromptResult != null) && singlePromptResult.length > 0) {
+                    console.log('\x1b[32m✔️ AI Text Humanizer Test Passed!\x1b[0m');
+                    await saveResults(3, `AI Text Humanizer test passed: ${singlePromptResult}`, 'pass');
                 } else {
-                    throw new Error("Single prompt result is empty.");
+                    throw new Error(`AI Text Humanizer result is empty. Full Response:\n${fullResponse}`);
                 }
             }
         } catch (error) {
             console.log('\x1b[31m❌ AI Text Humanizer Test Failed!\x1b[0m');
-            await saveResults(3, `AI Text Humanizer Test Failed: ${error.message}`, 'fail');
+            //await saveResults(3, `AI Text Humanizer Test Failed: ${error.message}`, 'fail');
             await handlePageError(error, 3);
         }
     });
+    
+
+    test(`TC 4_AI_Chat`, async () => {
+        try {
+            await page.locator("//span[contains(text(),'AI Chat')]").click();    
+            await page.locator('//textarea[@name="banner-search"]').type(Data.Test_Data[0].AI_Chat);   
+            await page.keyboard.press('Enter');  
+            console.log("⏳ AI Chat clicked, waiting for API response: /api/chat/storeMessage");   
+            const response = await page.waitForResponse(res =>
+                res.url().includes('/api/chat/storeMessage') && res.status() === 200
+            );   
+            const responseData = await response.json();
+            const fullResponse = JSON.stringify(responseData, null, 2); // Store full response
+    
+            console.log('✅ Full API Response:', fullResponse);
+    
+            // Extract `message_output` correctly
+            let multiPromptResult = responseData?.data?.messages?.message_output || responseData?.data?.message_output || null;
+    
+            if (typeof multiPromptResult === 'string') {
+                multiPromptResult = multiPromptResult.replace(/\*\*|["\n\r]/g, '').trim(); // Remove unwanted characters
+            }
+    
+            console.log(`📌 Extracted Multi Prompt Result:`, multiPromptResult);
+            console.log(`🔢 Character Count:`, multiPromptResult ? multiPromptResult.length : 0);
+    
+            // Debugging check
+            if (multiPromptResult !== null && multiPromptResult.length > 0) {
+                console.log('\x1b[32m✔️ AI Chat Test Passed!\x1b[0m');
+                await saveResults(4, `AI Chat test passed with content: ${multiPromptResult}`, 'pass');
+            } else {
+                throw new Error(`AI Chat result is empty. Full Response:\n${fullResponse}`);
+            }
+    
+        } catch (error) {
+            console.log('\x1b[31m❌ AI Chat Test Failed!\x1b[0m');
+            await saveResults(4, `AI Chat test failed: ${error.message}`, 'fail');
+            await handlePageError(error, 4);
+        }
+    });
+    
+
+    test(`TC 5_AI_Image`, async () => {
+        try {
 
 
+            await page.locator("//span[contains(text(),'AI Image Generator')]").click();
+            await page.locator('(//button[@aria-label="Create image prompt with AI for better results"])[1]').click();
+
+            let popupcreate = await page.locator('//div[@class="text-[#1E2022] p-6 relative flex flex-col overflow-hidden"]');
+            if (popupcreate.isVisible) {
+                console.log("popup is visible");
+                await page.locator("(//div[contains(@class, 'field-container')]//input[@type='text'])[1]").fill(Data.Test_Data[0].AI_Image_Q1);
+                await page.locator("(//div[contains(@class, 'field-container')]//input[@type='text'])[2]").fill(Data.Test_Data[0].AI_Image_Q2);
+                await page.locator("(//div[contains(@class, 'field-container')]//input[@type='text'])[3]").fill(Data.Test_Data[0].AI_Image_Q3);
+                await page.locator("//span[contains(text(),'Generate Image')]").click();
+                console.log("Generate Image button clicked");
+
+                const response = await page.waitForResponse(async (res) => {
+                    if (res.url().includes('/api/ImgGenerate') && res.status() === 200) {
+                        return true;
+                    }
+                    return false;
+                });
+
+                const responseData = await response.json();
+                console.log('✅ Full API Response:', JSON.stringify(responseData, null, 2));
+
+                const imageUrl = responseData?.data?.image_url || null;
+                const compressedImageUrl = responseData?.data?.compressed_image_url || null;
+
+                // Check if both image URLs are present
+                if (imageUrl && compressedImageUrl) {
+                    console.log('✅ Image URL:', imageUrl);
+                    console.log('✅ Compressed Image URL:', compressedImageUrl);
+                    await saveResults(5, `AI Chat test passed with content: \n ${imageUrl}\n ${compressedImageUrl} `, 'pass');
+                } else {
+                    console.log('❌ Missing Image URLs, Full Response:', JSON.stringify(responseData, null, 2));
+                    throw new Error('❌ Missing Image URLs, Full Response:', JSON.stringify(responseData, null, 2));
+                }
+
+
+            } else {
+                console.error("❌ Error:Popup is not displayed");
+                throw new Error("Popup is not displayed");
+            }
+
+        } catch (error) {
+
+            console.log('\x1b[31m❌AI Image Test Failed!\x1b[0m');
+            await saveResults(5, `AI Image test failed: ${error.message}`, 'fail');
+            await handlePageError(error, 5);
+        }
+
+    })
 
     // After all tests: Finalize Excel report
     test.afterAll(async () => {
-        await page.close();
-        await finalizeExcelFile();
+        console.log("\x1b[34mFinalizing results...\x1b[0m");
+        await finalizeExcelFile(); // Write results at the end of all tests
         console.log("\x1b[34mTest suite completed. Results saved.\x1b[0m");
     });
 });
