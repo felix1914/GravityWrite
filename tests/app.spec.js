@@ -60,10 +60,11 @@ const apidatalogin = async (page) => {
     try {
         const response = await page.waitForResponse(
             (res) =>
-                res.status() === 200 &&
+                (res.status() === 401 || res.status() === 200) &&
                 res.url() === 'https://api.gravitywrite.com/api/auth/login'
         );
         const responseData = await response.json();
+        console.log(responseData);
         return responseData;
     } catch (error) {
         console.error(`Error during fetching API data: ${error}`);
@@ -196,60 +197,59 @@ data.data.forEach((item, testCaseIndex) => {
         });
         
 
-        test(`Login Page Test ${testCaseIndex}`, async () => {
-            try {
-                const emailLocator = page.locator("#text");
-                await emailLocator.waitFor({ state: 'visible', timeout: 10000 });
-                await emailLocator.fill(Username);
-
-                const passwordLocator = page.locator("#password");
-                await passwordLocator.waitFor({ state: 'visible', timeout: 10000 });
-                await passwordLocator.fill(Password);
-
-                const button = page.locator("//button[@type='submit']");
-                await button.waitFor({ state: 'visible', timeout: 10000 });
-                await button.click();
-
-                const loginOtherPageInfo = page.locator("//div[contains(@class, 'w-11/12') and contains(@class, 'mx-auto') and contains(@class, 'bg-white') and contains(@class, 'rounded-lg') and contains(@class, 'md:w-auto')]").first();
-                await loginOtherPageInfo.waitFor({ state: 'visible', timeout: 10000 });
-
-                if (await loginOtherPageInfo) {
-                    const continueButton = page.locator("//button[contains(text(),'Continue here')]");
-                    await continueButton.waitFor({ state: 'visible', timeout: 10000 });
-                    await continueButton.click();   
-
-                    // const responseData = await apidatalogin(page);
-                    // console.log('User Subscription:', responseData.data.user.user_subscription.plan.title);
-                    // let usertype = responseData.data.user.user_subscription.plan.title;
-
-                    // const offerButton = page.locator("//p[contains(text(),'No thanks!')]");
-                    // if (usertype !== "Pro") {
-                    //     await offerButton.waitFor({ state: 'visible', timeout: 10000 });
-                    //     await offerButton.click();
-                    // }
-
-                    const skipSurveyButton = page.locator("//span[contains(text(),'Skip survey')]");
-                    await skipSurveyButton.waitFor({ state: 'visible', timeout: 10000 });
-                    await skipSurveyButton.click();
-                    await page.reload();
-                    const tryNowButton = page.locator("//span[contains(text(),'AI Blog Writer')]");
-                    await tryNowButton.waitFor({ state: 'visible', timeout: 10000 });
-                    await tryNowButton.click();
-
-                    const Addnewblog = page.locator("//span[contains(text(),'Add New')]");
-                    await Addnewblog.waitFor({ state: 'visible', timeout: 10000 });
-                    await Addnewblog.click();
-
-                    await saveResults(2, "Username and password successfully entered", testCaseIndex);
-
-                } else {
-                    throw new Error("Login page did not load correctly");
-                }
-            } catch (error) {
-                await handlePageError(error, page, saveResults, 2, testCaseIndex, finalizeExcelFile);
-            }
-            await page.waitForTimeout(2000); // 2-second timeout
-        });
+   
+           test(`Login Page Test ${testCaseIndex}`, async () => {
+               try {
+                   const emailLocator = page.locator("#text");
+                   await emailLocator.waitFor({ state: 'visible', timeout: 10000 });
+                   await emailLocator.fill(Username);
+   
+                   const passwordLocator = page.locator("#password");
+                   await passwordLocator.waitFor({ state: 'visible', timeout: 10000 });
+                   await passwordLocator.fill(Password);
+   
+                   const button = page.locator("//button[@type='submit']");
+                   await button.waitFor({ state: 'visible', timeout: 10000 });
+                   await button.click();
+                   const responseData = await apidatalogin(page);
+                   if (responseData.type) {
+                   const loginOtherPageInfo = page.locator("//div[contains(@class, 'w-11/12') and contains(@class, 'mx-auto') and contains(@class, 'bg-white') and contains(@class, 'rounded-lg') and contains(@class, 'md:w-auto')]").first();
+                   await loginOtherPageInfo.waitFor({ state: 'visible', timeout: 10000 });
+   
+               
+                       const continueButton = page.locator("//button[contains(text(),'Continue here')]");
+                       await continueButton.waitFor({ state: 'visible', timeout: 10000 });
+                       await continueButton.click();
+   
+                     
+   
+                       // const offerButton = page.locator("//p[contains(text(),'No thanks!')]");
+                       // if (usertype !== "Pro") {
+                       //     await offerButton.waitFor({ state: 'visible', timeout: 10000 });
+                       //     await offerButton.click();
+                       // }
+                       } 
+   
+                       const skipSurveyButton = page.locator("//span[contains(text(),'Skip survey')]");
+                       await skipSurveyButton.waitFor({ state: 'visible', timeout: 10000 });
+                       await skipSurveyButton.click();
+                       await page.reload();
+                       const tryNowButton = page.locator("//span[contains(text(),'AI Blog Writer')]");
+                       await tryNowButton.waitFor({ state: 'visible', timeout: 10000 });
+                       await tryNowButton.click();
+   
+                       const Addnewblog = page.locator("//span[contains(text(),'Add New')]");
+                       await Addnewblog.waitFor({ state: 'visible', timeout: 10000 });
+                       await Addnewblog.click();
+   
+                       await saveResults(2, "Username and password successfully entered", testCaseIndex);
+   
+                 
+               } catch (error) {
+                   await handlePageError(error, page, saveResults, 2, testCaseIndex, finalizeExcelFile);
+               }
+               await page.waitForTimeout(3000); // 2-second timeout
+           });
 
         test(`User Subscription ${testCaseIndex}`, async () => {
             try {

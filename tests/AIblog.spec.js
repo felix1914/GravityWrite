@@ -1,10 +1,31 @@
+import fs from 'fs';
+import path from 'path';
 import { test, chromium } from '@playwright/test';
 import data from './data.json';
 import ExcelJS from 'exceljs';
 
-// Initialize the Excel workbook and worksheet outside of the loop
+// Define __dirname in ES module
+const __dirname = path.resolve();
+
 const workbook = new ExcelJS.Workbook();
 const worksheet = workbook.addWorksheet('Test Results');
+
+// Function to dynamically create a folder for the current month
+const getMonthlyFolderPath = () => {
+    const currentDate = new Date();
+    const monthName = currentDate.toLocaleString('en-US', { month: 'long' }); // e.g., "April"
+    const year = currentDate.getFullYear(); // e.g., 2025
+    const folderName = `Staging_${monthName}_${year}`; // e.g., "April_2025"
+    const folderPath = path.join(__dirname, folderName); // Full path
+
+    // Check if folder exists, if not create it
+    if (!fs.existsSync(folderPath)) {
+        fs.mkdirSync(folderPath, { recursive: true });
+        console.log(`📁 Created folder: ${folderPath}`);
+    }
+
+    return folderPath;
+};
 
 // Function to save results in the desired format
 const saveResults = async (rowIndex, result, testCaseIndex) => {
@@ -21,29 +42,29 @@ const saveResults = async (rowIndex, result, testCaseIndex) => {
 const finalizeExcelFile = async () => {
     try {
         const currentDate = new Date();
+        const formattedDate = `${String(currentDate.getDate()).padStart(2, '0')}${String(currentDate.getMonth() + 1).padStart(2, '0')}${currentDate.getFullYear()}`;
+        const fileName = `Staging_AI_Blog_Writer_${formattedDate}.xlsx`;
 
-        // Format date as DDMMYYYY
-        const day = String(currentDate.getDate()).padStart(2, '0');
-        const month = String(currentDate.getMonth() + 1).padStart(2, '0'); // Months are zero-indexed
-        const year = currentDate.getFullYear();
+        // Get month-wise folder path
+        const folderPath = getMonthlyFolderPath();
+        const filePath = path.join(folderPath, fileName);
 
-        const formattedDate = `${day}${month}${year}`;
-        const path = `Staging_AI_Blog_Writer_${formattedDate}.xlsx`;
-        
-        await workbook.xlsx.writeFile(path);
-        console.log(`Results written to ${path}`);
+        await workbook.xlsx.writeFile(filePath);
+        console.log(`✅ Results written to ${filePath}`);
     } catch (error) {
         console.error(`Error during finalizing Excel file: ${error}`);
     }
 };
+
 const apidatalogin = async (page) => {
     try {
         const response = await page.waitForResponse(
             (res) =>
-                res.status() === 200 &&
+                (res.status() === 401 || res.status() === 200) &&
                 res.url() === 'https://staging-api.gravitywrite.com/api/auth/login'
         );
         const responseData = await response.json();
+        console.log(responseData);
         return responseData;
     } catch (error) {
         console.error(`Error during fetching API data: ${error}`);
@@ -88,6 +109,17 @@ testNames.forEach((name, index) => {
 // Error handling function
 const handlePageError = async (error, page, saveResults, rowIndex, testCaseIndex, finalizeExcelFile) => {
     try {
+        let apiErrorResponse = '';
+
+        // Capture the API response if any error-related request is intercepted
+        page.on('response', async (response) => {
+            if (response.status() >= 400) {
+                const responseBody = await response.text();
+                console.error(`API Error Detected: ${response.url()} - Response: ${responseBody}`);
+                apiErrorResponse = `API Error at ${response.url()} - Response: ${responseBody}`;
+            }
+        });
+
         // Check if an error message is displayed on the page
         const pageErrorLocator = page.locator("//p[contains(text(),'Error')]");
         if (await pageErrorLocator.isVisible()) {
@@ -96,11 +128,21 @@ const handlePageError = async (error, page, saveResults, rowIndex, testCaseIndex
             console.error(`Alert box issue: ${errorMessage}`);
             await saveResults(rowIndex, `Alert box issue: ${errorMessage}`, testCaseIndex);
             test.error(`Alert box issue: ${errorMessage}`);
+
+            // Log any captured API error along with the alert box issue
+            if (apiErrorResponse) {
+                await saveResults(rowIndex, apiErrorResponse, testCaseIndex);
+            }
         } else {
             // General error handling
             console.error(`General Error: ${error.message}`);
             await saveResults(rowIndex, `General Error: ${error.message}`, testCaseIndex);
             test.error(`General Error: ${error.message}`);
+
+            // Log any captured API error along with the general error
+            if (apiErrorResponse) {
+                await saveResults(rowIndex, apiErrorResponse, testCaseIndex);
+            }
         }
     } catch (errorHandlingError) {
         // If error handling itself fails, log it
@@ -111,7 +153,6 @@ const handlePageError = async (error, page, saveResults, rowIndex, testCaseIndex
         process.exit(1); // Stop further execution
     }
 };
-
 
 // Iterate over each data item and perform tests
 data.data.forEach((item, testCaseIndex) => {
@@ -124,7 +165,7 @@ data.data.forEach((item, testCaseIndex) => {
             context = await browser.newContext();
             page = await context.newPage();
         });
-        
+
         test(`Test Data for Execution ${testCaseIndex}`, async () => {
             try {
                 await saveResults(0, JSON.stringify(data), testCaseIndex);
@@ -137,15 +178,24 @@ data.data.forEach((item, testCaseIndex) => {
 
         test(`URL Launch ${testCaseIndex}`, async () => {
             try {
-                const response = await page.goto(URL);
+                // Navigate to the URL and wait for the DOM to load
+                const response = await page.goto(URL, { waitUntil: 'domcontentloaded' });
+
+                // Get the response status code
                 const responseCode = response?.status();
                 console.log(`Response Code: ---${responseCode}`);
+
+                // Save the result
                 await saveResults(1, `URL Response: ${responseCode}`, testCaseIndex);
             } catch (error) {
+                // Handle errors using the provided error-handling function
                 await handlePageError(error, page, saveResults, 1, testCaseIndex, finalizeExcelFile);
             }
-            await page.waitForTimeout(2000); // 2-second timeout
+
+            // Add a 2-second timeout before the test ends
+            await page.waitForTimeout(2000);
         });
+
 
         test(`Login Page Test ${testCaseIndex}`, async () => {
             try {
@@ -160,24 +210,24 @@ data.data.forEach((item, testCaseIndex) => {
                 const button = page.locator("//button[@type='submit']");
                 await button.waitFor({ state: 'visible', timeout: 10000 });
                 await button.click();
-
+                const responseData = await apidatalogin(page);
+                if (responseData.type) {
                 const loginOtherPageInfo = page.locator("//div[contains(@class, 'w-11/12') and contains(@class, 'mx-auto') and contains(@class, 'bg-white') and contains(@class, 'rounded-lg') and contains(@class, 'md:w-auto')]").first();
                 await loginOtherPageInfo.waitFor({ state: 'visible', timeout: 10000 });
 
-                if (await loginOtherPageInfo) {
+            
                     const continueButton = page.locator("//button[contains(text(),'Continue here')]");
                     await continueButton.waitFor({ state: 'visible', timeout: 10000 });
                     await continueButton.click();
 
-                    // const responseData = await apidatalogin(page);
-                    // console.log('User Subscription:', responseData.data.user.user_subscription.plan.title);
-                    // let usertype = responseData.data.user.user_subscription.plan.title;
+                  
 
                     // const offerButton = page.locator("//p[contains(text(),'No thanks!')]");
                     // if (usertype !== "Pro") {
                     //     await offerButton.waitFor({ state: 'visible', timeout: 10000 });
                     //     await offerButton.click();
                     // }
+                    } 
 
                     const skipSurveyButton = page.locator("//span[contains(text(),'Skip survey')]");
                     await skipSurveyButton.waitFor({ state: 'visible', timeout: 10000 });
@@ -193,29 +243,39 @@ data.data.forEach((item, testCaseIndex) => {
 
                     await saveResults(2, "Username and password successfully entered", testCaseIndex);
 
-                } else {
-                    throw new Error("Login page did not load correctly");
-                }
+              
             } catch (error) {
                 await handlePageError(error, page, saveResults, 2, testCaseIndex, finalizeExcelFile);
             }
-            await page.waitForTimeout(2000); // 2-second timeout
+            await page.waitForTimeout(3000); // 2-second timeout
         });
 
         test(`User Subscription ${testCaseIndex}`, async () => {
             try {
-                await page.reload();
-                test.setTimeout(3000);
+                // Increase the timeout for this test
+                test.setTimeout(30000); // Set timeout to 30 seconds
+
+                // Reload the page before making the API call
+                await page.reload({ waitUntil: 'domcontentloaded' });
+
+                // Call the API function to get user data
                 const responseData = await apidatagetuser(page);
+
                 if (responseData) {
                     console.log('User Subscription:', responseData.data.user.user_subscription.plan.title);
+
+                    // Extract the user subscription plan title
                     let usertype = responseData.data.user.user_subscription.plan.title;
+
+                    // Save the result
                     await saveResults(3, usertype, testCaseIndex);
                 }
             } catch (error) {
+                // Handle errors
                 await handlePageError(error, page, saveResults, 3, testCaseIndex, finalizeExcelFile);
             }
         });
+
 
         test(`URL Checking Test ${testCaseIndex}`, async () => {
             try {
@@ -320,14 +380,12 @@ data.data.forEach((item, testCaseIndex) => {
 
         test(`Image Validation Test ${testCaseIndex}`, async () => {
             try {
-                await page.waitForSelector('//img[@class="max-h-[120px] max-w-[170px] cursor-pointer"]', { state: 'visible' });
-                const image = await page.locator('//img[@class="max-h-[120px] max-w-[170px] cursor-pointer"]');
+                const image = page.locator('(//img[@class="max-h-[120px] max-w-[170px] cursor-pointer"])[1]');
                 const imageSrc = await image.getAttribute('src');
-                console.log(`Image src: ${imageSrc}`);
                 const imageResponse = await page.request.get(imageSrc);
                 const responseCode = imageResponse.status();
                 console.log(`Image Response Code: ${responseCode}`);
-                await page.waitForTimeout(5000);
+                await saveResults(11, `Image response code: ${responseCode}`, testCaseIndex);
                 if (!page.isClosed()) {
                     const stopGenerationButton = page.locator("//span[contains(text(),'Stop Generation')]");
                     await stopGenerationButton.click();
@@ -342,7 +400,7 @@ data.data.forEach((item, testCaseIndex) => {
                     console.error("Error during test execution: ", error);
                 }
             }
-            await page.waitForTimeout(2000); // 2-second timeout
+            await page.waitForTimeout(2000); // 2-second timeo
         });
 
         test(`Preview Button Test ${testCaseIndex}`, async () => {
@@ -381,9 +439,6 @@ data.data.forEach((item, testCaseIndex) => {
             await page.waitForTimeout(2000); // 2-second timeout
         });
 
-
-
-        
         test.afterAll(async () => {
             if (browser) {
                 await browser.close();
