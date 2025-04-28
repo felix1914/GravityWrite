@@ -26,7 +26,8 @@ const testNames = [
     'Multi Prompt Test',
     'AI Text Humanizer Test',
     'AI_Chat',
-    'AI_Image_Generate'
+    'AI_Image_Generate',
+    'Storybook_Generate'
 ];
 
 testNames.forEach((name, index) => {
@@ -366,6 +367,146 @@ test.describe('Testsuite', () => {
         }
 
     })
+    test(`TC 6_StoryBook`, async () => {
+        try {
+            // Wait for page reload to complete and the page to be loaded
+           // await page.reload({ waitUntil: 'domcontentloaded' });
+    
+           test.setTimeout(3000);
+            // Wait for the 'AI Image Generator' element to be visible and then click it
+            await page.waitForSelector("//span[contains(text(),'AI Image Generator')]", { state: 'visible' });
+            await page.locator("//span[contains(text(),'AI Image Generator')]").click();
+            test.setTimeout(3000);
+            await page.waitForSelector("//span[contains(text(),'AI Image Generator')]", { state: 'visible' });
+            await page.locator("//span[contains(text(),'AI Image Generator')]").click();
+
+    
+            // Click on 'Storybook Image Creator'
+            await page.waitForSelector("//span[contains(text(),'Storybook Image Creator')]", { state: 'visible' });
+            await page.locator("//span[contains(text(),'Storybook Image Creator')]").click();
+    
+            // Fill in project details
+            let project = await page.locator('#projectName');
+            await project.click();
+            await project.fill(Data.Test_Data[0].Project_Name);
+    
+            // Fill in the story details
+            let story = await page.locator('#story');
+            await story.click();
+            await story.fill(Data.Test_Data[0].Story);
+    
+            // Submit the form
+            await page.locator('//button[@type="submit"]').click();
+    
+            // Wait for the popup to appear
+            await page.locator('//div[@class="flex flex-col justify-center items-center text-[#1E2022] p-4 md:p-12"]').waitFor();
+    
+            // Wait for the "Generate All Images" button to become visible
+            await page.locator("//button[contains(text(),'Generate All Images')]").waitFor({ state: 'visible' });
+    
+            // Now click the button
+            await page.locator("(//button[contains(text(),'Generate Images')])[1]").click();
+    
+            // Get the current URL
+            const currentUrl = page.url();
+            const urlObj = new URL(currentUrl);
+            const storybookId = urlObj.searchParams.get("storybook_id");
+    
+            // Now use it in your API wait
+            const response = await page.waitForResponse(res =>
+                res.url().includes(`/api/storyboard/${storybookId}/generate/images`)
+            );
+    
+            // Get response status code
+            const statusCode = response.status();
+    
+            // Extract full response
+            const responseData = await response.json();
+            const fullResponse = JSON.stringify(responseData, null, 2);
+    
+            // Print response details
+            console.log(`🔹 API Status Code: ${statusCode}`);
+            console.log('🔹 Full API Response:', fullResponse);
+    
+            if (statusCode === 200) {
+                const imageUrl = responseData?.data?.story_images?.[0]?.image_url; // Corrected this line
+    
+                if (imageUrl) {
+                    console.log('✅ Image URL:', imageUrl);
+                    await saveResults(7, `AI Image test passed with content:\n${imageUrl}`, 'pass');
+                } else {
+                    throw new Error(`❌ Missing image_url in API response.\nFull Response:\n${fullResponse}`);
+                }
+            } else {
+                throw new Error(`❌ API returned status ${statusCode}.\nError Message:\n${fullResponse}`);
+            }
+    
+        } catch (error) {
+            console.error("Error during the test:", error);
+            await handlePageError(error, 7);
+        }
+    });
+    
+    // test('CoverImage',async()=>{
+    //  let author= Data.Test_Data[0].CoverimgAuthor;
+    //     try {
+
+    //         await page.locator("//button[contains(text(),'Generate Cover Image')]").click();
+    //         await page.locator("#authorName").fill(author);
+    //         await page.click('//input[@value="create-prompt"]');
+    //         await page.locator('//button[@type="submit"]').click();
+    //         await page.locator("//button[contains(text(),'Generate Cover Images')]").click();
+
+    //         const currentUrl = page.url();
+    //         const urlObj = new URL(currentUrl);
+    //         const storybookId = urlObj.searchParams.get("storybook_id");
+    
+    //         // Now use it in your API wait
+    //         const response = await page.waitForResponse(res =>
+    //             res.url().includes(`/api/storyboard/${storybookId}/cover-image`)
+    //         );
+    
+    //         // Get response status code
+    //         const statusCode = response.status();
+    
+    //         // Extract full response
+    //         const responseData = await response.json();
+    //         const fullResponse = JSON.stringify(responseData, null, 2);
+    
+    //         // Print response details
+    //         console.log(`🔹 API Status Code: ${statusCode}`);
+    //         console.log('🔹 Full API Response:', fullResponse);
+    
+    //         if (statusCode === 200) {
+    //             const imageUrl = responseData?.data?.story_images?.[0]?.image_url; // Corrected this line
+    
+    //             if (imageUrl) {
+    //                 console.log('✅ Image URL:', imageUrl);
+    //                 await saveResults(8, `AI Image test passed with content:\n${imageUrl}`, 'pass');
+    //             } else {
+    //                 throw new Error(`❌ Missing image_url in API response.\nFull Response:\n${fullResponse}`);
+    //             }
+    //         } else {
+    //             throw new Error(`❌ API returned status ${statusCode}.\nError Message:\n${fullResponse}`);
+    //         }
+
+            
+    //     } catch (error) {
+    //         console.error("Error during the test:", error);
+    //         await handlePageError(error, 8);
+            
+    //     }
+
+
+
+    // })
+
+
+
+
+
+
+
 
     // After all tests: Finalize Excel report
     test.afterAll(async () => {
